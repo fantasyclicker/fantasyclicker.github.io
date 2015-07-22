@@ -9,12 +9,6 @@
         jsUpgradeClick = document.querySelector('.jsUpgradeClick'),
         jsBuyGlassess = document.querySelector('.jsBuyGlassess'),
         player = new Player(),
-    //todo: переделать player
-        //player = {
-        //    HP: 20,
-        //    damage: 1,
-        //    gold: 0
-        //},
         map,
         CELL_SIZE = 61,
         MAP_SIZE = {
