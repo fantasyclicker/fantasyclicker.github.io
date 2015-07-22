@@ -8,11 +8,13 @@
         jsBuyClick = document.querySelector('.jsBuyClick'),
         jsUpgradeClick = document.querySelector('.jsUpgradeClick'),
         jsBuyGlassess = document.querySelector('.jsBuyGlassess'),
-        player = {
-            HP: 20,
-            damage: 1,
-            gold: 0
-        },
+        player = new Player(),
+    //todo: переделать player
+        //player = {
+        //    HP: 20,
+        //    damage: 1,
+        //    gold: 0
+        //},
         map,
         CELL_SIZE = 61,
         MAP_SIZE = {
@@ -27,11 +29,6 @@
             top: 0,
             left: 0
         },
-        currentPlayerCoords = {
-            left: 0,
-            top: 0
-        },
-        currentPlayerClass = 'player',
         monsters = [],
         beastiary = {},
         beastiaryAssoc = [];
@@ -95,8 +92,8 @@
                 for (var i=0; i < monsters[j].length; i++) {
                     if (monsters[j][i] instanceof Object) {
                         if (monsters[j][i].HP <= 0) {
-                            player.gold += Math.round(Math.random()*monsters[j][i].gold);
-                            jsGold.innerText = player.gold;
+                            player.addGold(Math.round(Math.random()*monsters[j][i].gold));
+                            jsGold.innerText = player.getGold();
                             monsters[j][i] = undefined;
                         } else {
                             count++;
@@ -121,8 +118,10 @@
     }
 
     function setPlayerCoords() {
-        currentPlayerCoords.left = currentScreenCoords.left + Math.floor(screenSize.width/2);
-        currentPlayerCoords.top = currentScreenCoords.top + Math.floor(screenSize.height/2);
+        player.setCoords(
+            currentScreenCoords.left + Math.floor(screenSize.width/2),
+            currentScreenCoords.top + Math.floor(screenSize.height/2)
+        );
     }
 
     function drawMap(map) {
@@ -146,10 +145,10 @@
                 }
                 field.className='field field_'+curCellType;
                 // player
-                if (y === currentPlayerCoords.top && x === currentPlayerCoords.left) {
-                    var player = document.createElement('div');
-                    player.className = currentPlayerClass;
-                    field.appendChild(player);
+                if (y === player.getCoords().y && x === player.getCoords().x) {
+                    var domPlayer = document.createElement('div');
+                    domPlayer.className = player.getCssClass();
+                    field.appendChild(domPlayer);
                     field.className += ' field_P';
                     // monster
                 } else if (isMonster(x, y)) {
@@ -172,7 +171,7 @@
         var y = Number(this.getAttribute('data-y'));
         var x = Number(this.getAttribute('data-x'));
         if (
-            y === currentPlayerCoords.top && x === currentPlayerCoords.left
+            y === player.getCoords().y && x === player.getCoords().x
         ) {
             var randPhrase = ['Топчимся на месте...', 'Топ-топ-топ...'];
             jsHint.innerHTML = randPhrase[Math.round(Math.random())];
@@ -186,11 +185,11 @@
                     left: 0,
                     top: 0
                 };
-            if (x-currentPlayerCoords.left) {
-                nextScreenCoords.left = currentScreenCoords.left + (x-currentPlayerCoords.left)/Math.abs(x-currentPlayerCoords.left);
+            if (x-player.getCoords().x) {
+                nextScreenCoords.left = currentScreenCoords.left + (x-player.getCoords().x)/Math.abs(x-player.getCoords().x);
             }
-            if (y-currentPlayerCoords.top) {
-                nextScreenCoords.top = currentScreenCoords.top + (y-currentPlayerCoords.top)/Math.abs(y-currentPlayerCoords.top);
+            if (y-player.getCoords().y) {
+                nextScreenCoords.top = currentScreenCoords.top + (y-player.getCoords().y)/Math.abs(y-player.getCoords().y);
             }
             nextPlayerCoords.left = nextScreenCoords.left + Math.floor(screenSize.width/2);
             nextPlayerCoords.top = nextScreenCoords.top + Math.floor(screenSize.height/2);
@@ -203,9 +202,10 @@
             } else if (isMonster(nextPlayerCoords.left, nextPlayerCoords.top)) {
                 var currentMonster = monsters[nextPlayerCoords.top][nextPlayerCoords.left],
                     monsterDamage = Math.round(Math.random()*currentMonster.damage);
-                jsHint.innerHTML = 'Ты отнял у монстра '+currentMonster.name+' '+player.damage+'. '+currentMonster.name+' отнял у тебя '+monsterDamage;
-                player.HP -= monsterDamage;
-                currentMonster.HP -= player.damage;
+                var playerDamage = player.getDamage();
+                jsHint.innerHTML = 'Ты отнял у монстра '+currentMonster.name+' '+playerDamage+'. '+currentMonster.name+' отнял у тебя '+monsterDamage;
+                player.hurt(monsterDamage);
+                currentMonster.HP -= playerDamage;
                 jsMonsterHP.innerText = currentMonster.HP+'/'+beastiary[currentMonster.type].HP;
                 drawMap(map);
             } else {
@@ -222,7 +222,7 @@
     function hint() {
         var y = Number(this.getAttribute('data-y'));
         var x = Number(this.getAttribute('data-x'));
-        if (y === currentPlayerCoords.top && x === currentPlayerCoords.left) {
+        if (y === player.getCoords().y && x === player.getCoords().x) {
             jsHint.innerHTML = 'Это ты родимый';
         } else {
             if (this.className.indexOf('field_M') > -1) {
@@ -238,36 +238,25 @@
     }
 
     jsBuyClick.onclick = function() {
-        if (player.gold >= 10) {
-            player.damage += 1;
-            jsDamage.innerText = player.damage;
-            player.gold -= 20;
-            jsGold.innerText = player.gold;
+        if (player.buyDamage()) {
+            jsDamage.innerText = player.getDamage();
+            jsGold.innerText = player.getGold();
         }
         return false;
-    }
+    };
+
     jsBuySword.onclick = function() {
-        if (player.gold >= 120) {
-            player.damage += 20;
-            jsDamage.innerText = player.damage;
-            player.gold -= 20;
-            jsGold.innerText = player.gold;
+        if (player.buySword()) {
+            jsDamage.innerText = player.getDamage();
+            jsGold.innerText = player.getGold();
             this.style.display = 'none';
         }
         return false;
-    }
-//jsBuyShield.onclick = function() {
-//    if (player.gold >= 200) {
-//        player.damage += 1;
-//        jsDamage.innerText = player.damage;
-//    }
-//    return false;
-//}
-    jsBuyGlassess.onclick = function() {
+    };
 
-        if (player.gold >= 2000) {
-            player.gold -= 2000;
-            jsGold.innerText = player.gold;
+    jsBuyGlassess.onclick = function() {
+        if (player.buyGlass()) {
+            jsGold.innerText = player.getGold();
 
             currentScreenCoords.left -= Math.round((10-screenSize.width)/2);
             currentScreenCoords.top -= Math.round((10-screenSize.height)/2);
@@ -282,7 +271,7 @@
             this.style.display = 'none';
         }
         return false;
-    }
+    };
 
 
     setPlayerCoords();
